@@ -54,4 +54,6 @@ Project Organization
 
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+Link to data:
+https://www.chesdata.eu/s/1999-2019_CHES_dataset_meansv3-x7lr.csv
+https://dataverse.harvard.edu/file.xhtml?fileId=5194094&version=1.0#

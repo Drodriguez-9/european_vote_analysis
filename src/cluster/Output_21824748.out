@@ -1,0 +1,122 @@
+Epoch 1, Loss: 2015563.4496
+Epoch 1001, Loss: 65350.1753
+Epoch 2001, Loss: 65169.8123
+Epoch 3001, Loss: 65129.6662
+Epoch 4001, Loss: 65100.8289
+Epoch 5001, Loss: 65085.8842
+Epoch 6001, Loss: 65154.0927
+Epoch 7001, Loss: 65126.7046
+Epoch 8001, Loss: 65204.6100
+Epoch 9001, Loss: 65218.0271
+Epoch 10001, Loss: 65084.8562
+Epoch 11001, Loss: 65079.5120
+Epoch 12001, Loss: 65258.4268
+Epoch 13001, Loss: 65099.6555
+Epoch 14001, Loss: 65179.9847
+Epoch 15001, Loss: 65185.7906
+Epoch 16001, Loss: 65070.2786
+Epoch 17001, Loss: 65165.7521
+Epoch 18001, Loss: 65117.2242
+Epoch 19001, Loss: 65146.5812
+Epoch 20001, Loss: 65081.7262
+Epoch 21001, Loss: 65163.0444
+Epoch 22001, Loss: 65342.5079
+Epoch 23001, Loss: 65110.0380
+Epoch 24001, Loss: 65230.4259
+Epoch 25001, Loss: 65107.6291
+Epoch 26001, Loss: 65092.0468
+Epoch 27001, Loss: 65151.5514
+Epoch 28001, Loss: 65304.2006
+Epoch 29001, Loss: 65123.8434
+Epoch 30001, Loss: 65077.7172
+Epoch 31001, Loss: 65112.5941
+Epoch 32001, Loss: 65158.3206
+Epoch 33001, Loss: 65170.0501
+Epoch 34001, Loss: 65118.4020
+Epoch 35001, Loss: 65078.6203
+Epoch 36001, Loss: 65153.1498
+Epoch 37001, Loss: 65118.1333
+Epoch 38001, Loss: 65106.3289
+Epoch 39001, Loss: 65169.9771
+
+Pyro Model - Accuracy: 0.8164
+Pyro Model - Precision: 0.2000
+Pyro Model - Recall: 0.1963
+Pyro Model - F1 Score: 0.1981
+
+Logistic Regression - Accuracy: 0.8859
+Logistic Regression - Precision: 0.6216
+Logistic Regression - Recall: 0.0312
+Logistic Regression - F1 Score: 0.0594
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 21824748: <NoBatching> in cluster <dcc> Done
+
+Job <NoBatching> was submitted from host <hpclogin2> by user <s222883> in cluster <dcc> at Tue May 21 15:59:10 2024
+Job was executed on host(s) <4*n-62-20-16>, in queue <gpuv100>, as user <s222883> in cluster <dcc> at Tue May 21 16:23:56 2024
+</zhome/58/f/181392> was used as the home directory.
+</zhome/58/f/181392/DTU/MBML/european_vote_analysis> was used as the working directory.
+Started at Tue May 21 16:23:56 2024
+Terminated at Tue May 21 16:28:26 2024
+Results reported at Tue May 21 16:28:26 2024
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+### General options
+### -- specify queue --
+#BSUB -q gpuv100
+#BSUB -gpu "num=1:mode=exclusive_process"
+### -- set the job Name --
+#BSUB -J NoBatching
+### -- ask for number of cores (default: 1) --
+#BSUB -n 4
+### -- specify that the cores must be on the same host --
+#BSUB -R "span[hosts=1]"
+### -- specify that we need 4GB of memory per core/slot --
+#BSUB -R "rusage[mem=1GB]"
+### -- specify that we want the job to get killed if it exceeds 5 GB per core/slot --
+#BSUB -M 1GB
+### -- set walltime limit: hh:mm --
+#BSUB -W 00:20
+### -- Specify the output and error file. %J is the job-id --
+#BSUB -oo /zhome/58/f/181392/DTU/MBML/european_vote_analysis/src/cluster/Output_%J.out
+#BSUB -eo /zhome/58/f/181392/DTU/MBML/european_vote_analysis/src/cluster/Error_%J.err
+
+# Load necessary modules (assuming you have these modules available)
+module load cuda/12.1  # Load CUDA if you are using GPU
+
+# Activate your virtual environment
+source /zhome/58/f/181392/DTU/MBML/european_vote_analysis/.venv/bin/activate
+
+# Run your training script
+python /zhome/58/f/181392/DTU/MBML/european_vote_analysis/src/models/train_model.py --cuda --n_steps 40000 --batch-size 1000 --learning-rate 0.01 --log_interval 1000
+
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   262.74 sec.
+    Max Memory :                                 777 MB
+    Average Memory :                             777.00 MB
+    Total Requested Memory :                     4096.00 MB
+    Delta Memory :                               3319.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                8
+    Run time :                                   269 sec.
+    Turnaround time :                            1756 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file </zhome/58/f/181392/DTU/MBML/european_vote_analysis/src/cluster/Error_21824748.err> for stderr output of this job.
+

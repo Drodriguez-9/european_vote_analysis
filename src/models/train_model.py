@@ -22,6 +22,10 @@ from pyro.nn import PyroModule
 from pyro.contrib.autoguide import AutoMultivariateNormal
 from pyro.infer import SVI, Trace_ELBO
 from pyro.optim import ClippedAdam
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from src.data.make_dataset import split_data
+from sklearn.linear_model import LogisticRegression
+
 
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -34,28 +38,62 @@ def model(X, n_cat, obs=None):
                                              5.*torch.ones(1, n_cat, device=device)).to_event())  # Prior for the bias/intercept
     beta  = pyro.sample("beta", dist.Normal(torch.zeros(input_dim, n_cat, device=device), 
                                             5.*torch.ones(input_dim, n_cat, device=device)).to_event()) # Priors for the regression coeffcients
-    
     with pyro.plate("data"):
         y = pyro.sample("y", dist.Categorical(logits=alpha + X.matmul(beta)), obs=obs)
-        
     return y
         
+        
 def load_data(parent_dir):
-    data_dir = parent_dir[2].joinpath("data", "processed")
-    X_train = pd.read_csv(data_dir.joinpath("X_train.csv")).values
-    X_test = pd.read_csv(data_dir.joinpath("X_test.csv")).values
-    y_train = pd.read_csv(data_dir.joinpath("y_train.csv")).values
-    y_test = pd.read_csv(data_dir.joinpath("y_test.csv")).values
-    return X_train, X_test, y_train, y_test
+    data_dir = parent_dir[2].joinpath("data", "processed", "processed_data.csv")
+    df = pd.read_csv(data_dir)
+    return df
 
-def main(args, parent_dir):
-    X_train, X_test, y_train, y_test = load_data(parent_dir)
+
+def evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat):
+    # Convert tensors to CPU before using sklearn
+    X_train_cpu = X_train.cpu().numpy()
+    y_train_cpu = y_train.cpu().numpy()
+    X_test_cpu = X_test.cpu().numpy()
+    y_test_cpu = y_test.cpu().numpy()
+    
+    guide_trace = pyro.poutine.trace(svi.guide).get_trace(X_test, n_cat)
+    model_trace = pyro.poutine.trace(pyro.poutine.replay(svi.model, trace=guide_trace)).get_trace(X_test, n_cat)
+    preds = model_trace.nodes['y']['value']
+    y_pred = preds.cpu().numpy()
+    y_true = y_test_cpu.flatten()  # Ensure y_test is a 1D array
+
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, zero_division=0)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+
+    print(f"Pyro Model - Accuracy: {accuracy:.4f}")
+    print(f"Pyro Model - Precision: {precision:.4f}")
+    print(f"Pyro Model - Recall: {recall:.4f}")
+    print(f"Pyro Model - F1 Score: {f1:.4f}")
+
+    # Logistic Regression for Comparison
+    logistic_reg = LogisticRegression(max_iter=10000)
+    logistic_reg.fit(X_train_cpu, y_train_cpu.ravel())
+    y_pred_logreg = logistic_reg.predict(X_test_cpu)
+
+    accuracy_logreg = accuracy_score(y_true, y_pred_logreg)
+    precision_logreg = precision_score(y_true, y_pred_logreg, zero_division=0)
+    recall_logreg = recall_score(y_true, y_pred_logreg)
+    f1_logreg = f1_score(y_true, y_pred_logreg)
+
+    print(f"Logistic Regression - Accuracy: {accuracy_logreg:.4f}")
+    print(f"Logistic Regression - Precision: {precision_logreg:.4f}")
+    print(f"Logistic Regression - Recall: {recall_logreg:.4f}")
+    print(f"Logistic Regression - F1 Score: {f1_logreg:.4f}")
+
+def main(args, X_train, X_test, y_train, y_test):
     n_cat = 2
     device = torch.device("cuda" if args.cuda else "cpu")
-    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
-    y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
-    X_test = torch.tensor(X_test, dtype=torch.float32).to(device)
-    y_test = torch.tensor(y_test, dtype=torch.float32).to(device)
+    X_train = torch.tensor(X_train.values, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train.values, dtype=torch.float32).to(device)
+    X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    y_test = torch.tensor(y_test.values, dtype=torch.float32).to(device)
     
     # Create DataLoader for mini-batch training
     train_dataset = TensorDataset(X_train, y_train)
@@ -80,9 +118,12 @@ def main(args, parent_dir):
         epoch_loss = svi.step(X_train, n_cat, y_train.reshape(-1))
         if epoch % args.log_interval == 0:
             print(f"Epoch {epoch + 1}, Loss: {epoch_loss:.4f}")
-    # lets save the trained model
-    torch.save({"model" : model.state_dict(), "guide" : guide}, "mymodel.pt")
-    pyro.get_param_store().save("mymodelparams.pt")
+    if args.save:
+        # lets save the trained model
+        torch.save({"guide" : guide}, Path.joinpath(parent_dir[2],"models", "baseline.pt"))
+        pyro.get_param_store().save(Path.joinpath(parent_dir[2],"models","baseline_params.pt"))
+    if args.eval:    
+        evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat)
 
 if __name__ == "__main__":
     assert pyro.__version__.startswith("1.9.0")
@@ -95,6 +136,10 @@ if __name__ == "__main__":
     parser.add_argument("--learning-rate", default=0.01, type=float)
     parser.add_argument("--seed", default=20200723, type=int)
     parser.add_argument("--n_steps", default=5000, type=int)
+    parser.add_argument("--save", default=False, type=bool)
+    parser.add_argument("--eval", default=True, type=bool)
     parser.add_argument("--cuda", action="store_true", default=torch.cuda.is_available())
     args = parser.parse_args()
-    main(args, parent_dir)
+    df = load_data(parent_dir)
+    X_train, X_test, y_train, y_test = split_data(df)
+    main(args, X_train, X_test, y_train, y_test)

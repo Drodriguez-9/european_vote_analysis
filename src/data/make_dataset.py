@@ -36,8 +36,6 @@ def preprocess_data():
     loan_default_df.drop(columns=['LoanID'], inplace=True)
     return loan_default_df
 
-
-    
 def split_data(df, test_size=0.2, random_state=42):
     target = 'Default'
     X = df.drop(columns=[target])
@@ -45,16 +43,12 @@ def split_data(df, test_size=0.2, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return X_train, X_test, y_train, y_test
 
-def save_data(df: pd.DataFrame, X_train, X_test, y_train, y_test):
+def save_data(df: pd.DataFrame):
     data_path = PARENTS_PATH[2].joinpath("data", "processed")
     df.to_csv(data_path.joinpath("processed_data.csv"), index=False)
-    X_train.to_csv(data_path.joinpath("X_train.csv"), index=False)
-    X_test.to_csv(data_path.joinpath("X_test.csv"), index=False)
-    y_train.to_csv(data_path.joinpath("y_train.csv"), index=False)
-    y_test.to_csv(data_path.joinpath("y_test.csv"), index=False)
 
 
 if __name__ == "__main__":
     loan_default_df = preprocess_data()
-    X_train, X_test, y_train, y_test = split_data(loan_default_df)
-    save_data(loan_default_df, X_train, X_test, y_train, y_test)
+    save_data(loan_default_df)
+    

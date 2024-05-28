@@ -52,6 +52,12 @@ def split_data(df, test_size=0.2, random_state=42):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     return X_train, X_test, y_train, y_test
 
+        
+def load_data(parent_dir):
+    data_dir = parent_dir[2].joinpath("data", "processed", "processed_data.csv")
+    df = pd.read_csv(data_dir)
+    return df
+
 def save_data(df: pd.DataFrame):
     data_path = PARENTS_PATH[2].joinpath("data", "processed")
     df.to_csv(data_path.joinpath("processed_data.csv"), index=False)

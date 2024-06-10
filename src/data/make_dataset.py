@@ -13,7 +13,7 @@ import itertools
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from src.features.build_features import calculate_columns
-from imblean.under_sampling import RandomUnderSampler
+
 
 from pathlib import Path
 
@@ -28,7 +28,7 @@ def preprocess_data():
     binary_columns = ['HasMortgage', 'HasDependents', 'HasCoSigner']
 
     loan_default_df = pd.get_dummies(loan_default_df, columns=categorical_columns, drop_first=False)
-    loan_default_df = pd.get_dummies(loan_default_df, columns=binary_columns, drop_first=True)
+    loan_default_df = pd.get_dummies(loan_default_df, columns=binary_columns, drop_first=False)
     #label_encoders = {col: LabelEncoder() for col in categorical_columns}
 
     #for col in categorical_columns:

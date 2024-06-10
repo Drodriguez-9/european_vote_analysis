@@ -14,6 +14,8 @@ from typing import Callable
 from pathlib import Path
 import torch
 
+from src.data.make_dataset import load_data
+
 import pyro
 import pyro.distributions as dist
 from pyro.infer import Trace_ELBO
@@ -26,8 +28,6 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from src.data.make_dataset import split_data
 from sklearn.linear_model import LogisticRegression
 from src.models.PGMs import model_categorical_weights
-
-
 from torch.utils.data import DataLoader, TensorDataset
 
 # We define a model as usual. This model is data parallel and supports subsampling.
@@ -42,11 +42,12 @@ def model(X, n_cat, obs=None):
         y = pyro.sample("y", dist.Categorical(logits=alpha + X.matmul(beta)), obs=obs)
     return y
 
-        
+
 def load_data(parent_dir):
     data_dir = parent_dir[2].joinpath("data", "processed", "processed_data.csv")
     df = pd.read_csv(data_dir)
     return df
+
 
 
 def evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat, args):
@@ -90,7 +91,7 @@ def evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat, args):
     print(f"Logistic Regression - Precision: {precision_logreg:.4f}")
     print(f"Logistic Regression - Recall: {recall_logreg:.4f}")
     print(f"Logistic Regression - F1 Score: {f1_logreg:.4f}")
-
+ 
 def main(args, X_train, X_test, y_train, y_test):
     n_cat = 2
     device = torch.device("cuda" if args.cuda else "cpu")
@@ -98,6 +99,7 @@ def main(args, X_train, X_test, y_train, y_test):
     y_train = torch.tensor(y_train.values, dtype=torch.float32).to(device)
     X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device)
     y_test = torch.tensor(y_test.values, dtype=torch.float32).to(device)
+
     model = model_categorical_weights
     
     # Create DataLoader for mini-batch training
@@ -134,16 +136,19 @@ def main(args, X_train, X_test, y_train, y_test):
         evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat, args)
 
 if __name__ == "__main__":
+
     assert pyro.__version__.startswith("1.9")
+
     parent_dir = Path(__file__).parents
     parser = argparse.ArgumentParser(
         description="Process some integers..."
     )
-    parser.add_argument("--log_interval", default=500, type=int)
+
+    parser.add_argument("--log_interval", default=100, type=int)
     parser.add_argument("--batch-size", default=10000, type=int)
     parser.add_argument("--learning-rate", default=0.0001, type=float)
     parser.add_argument("--seed", default=20200723, type=int)
-    parser.add_argument("--n_steps", default=5000, type=int)
+    parser.add_argument("--n_steps", default=500, type=int)
     parser.add_argument("--save", default=False, type=bool)
     parser.add_argument("--eval", default=True, type=bool)
     parser.add_argument("--type", default=True, type=bool)

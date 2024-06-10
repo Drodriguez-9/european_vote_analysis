@@ -25,12 +25,12 @@ from pyro.optim import ClippedAdam
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from src.data.make_dataset import split_data
 from sklearn.linear_model import LogisticRegression
+from src.models.PGMs import model_categorical_weights
 
 
 from torch.utils.data import DataLoader, TensorDataset
 
 # We define a model as usual. This model is data parallel and supports subsampling.
-
 def model(X, n_cat, obs=None):
     input_dim = X.shape[1]
     device = X.device  # Get the device of the input tensor
@@ -41,7 +41,7 @@ def model(X, n_cat, obs=None):
     with pyro.plate("data"):
         y = pyro.sample("y", dist.Categorical(logits=alpha + X.matmul(beta)), obs=obs)
     return y
-        
+
         
 def load_data(parent_dir):
     data_dir = parent_dir[2].joinpath("data", "processed", "processed_data.csv")
@@ -49,15 +49,19 @@ def load_data(parent_dir):
     return df
 
 
-def evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat):
+def evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat, args):
     # Convert tensors to CPU before using sklearn
     X_train_cpu = X_train.cpu().numpy()
     y_train_cpu = y_train.cpu().numpy()
     X_test_cpu = X_test.cpu().numpy()
     y_test_cpu = y_test.cpu().numpy()
-    
-    guide_trace = pyro.poutine.trace(svi.guide).get_trace(X_test, n_cat)
-    model_trace = pyro.poutine.trace(pyro.poutine.replay(svi.model, trace=guide_trace)).get_trace(X_test, n_cat)
+
+    if args.type:
+        guide_trace = pyro.poutine.trace(svi.guide).get_trace(X_test[:, :17], X_test[:, 17:], n_cat)
+        model_trace = pyro.poutine.trace(pyro.poutine.replay(svi.model, trace=guide_trace)).get_trace(X_test[:, :17], X_test[:, 17:], n_cat)
+    else:
+        guide_trace = pyro.poutine.trace(svi.guide).get_trace(X_test, n_cat)
+        model_trace = pyro.poutine.trace(pyro.poutine.replay(svi.model, trace=guide_trace)).get_trace(X_test, n_cat)
     preds = model_trace.nodes['y']['value']
     y_pred = preds.cpu().numpy()
     y_true = y_test_cpu.flatten()  # Ensure y_test is a 1D array
@@ -94,6 +98,7 @@ def main(args, X_train, X_test, y_train, y_test):
     y_train = torch.tensor(y_train.values, dtype=torch.float32).to(device)
     X_test = torch.tensor(X_test.values, dtype=torch.float32).to(device)
     y_test = torch.tensor(y_test.values, dtype=torch.float32).to(device)
+    model = model_categorical_weights
     
     # Create DataLoader for mini-batch training
     train_dataset = TensorDataset(X_train, y_train)
@@ -115,7 +120,10 @@ def main(args, X_train, X_test, y_train, y_test):
 
     # Training loop with mini-batch gradient steps
     for epoch in range(args.n_steps):
-        epoch_loss = svi.step(X_train, n_cat, y_train.reshape(-1))
+        if args.type:
+            epoch_loss = svi.step(X_train[:, :17], X_train[:, 17:], n_cat, y_train.reshape(-1))
+        else:
+            epoch_loss = svi.step(X_train, n_cat, y_train.reshape(-1))
         if epoch % args.log_interval == 0:
             print(f"Epoch {epoch + 1}, Loss: {epoch_loss:.4f}")
     if args.save:
@@ -123,21 +131,22 @@ def main(args, X_train, X_test, y_train, y_test):
         torch.save({"guide" : guide}, Path.joinpath(parent_dir[2],"models", "baseline.pt"))
         pyro.get_param_store().save(Path.joinpath(parent_dir[2],"models","baseline_params.pt"))
     if args.eval:    
-        evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat)
+        evaluate_model(svi, X_train, y_train, X_test, y_test, n_cat, args)
 
 if __name__ == "__main__":
-    assert pyro.__version__.startswith("1.9.0")
+    assert pyro.__version__.startswith("1.9")
     parent_dir = Path(__file__).parents
     parser = argparse.ArgumentParser(
         description="Process some integers..."
     )
-    parser.add_argument("--log_interval", default=1000, type=int)
+    parser.add_argument("--log_interval", default=500, type=int)
     parser.add_argument("--batch-size", default=10000, type=int)
-    parser.add_argument("--learning-rate", default=0.01, type=float)
+    parser.add_argument("--learning-rate", default=0.0001, type=float)
     parser.add_argument("--seed", default=20200723, type=int)
     parser.add_argument("--n_steps", default=5000, type=int)
     parser.add_argument("--save", default=False, type=bool)
     parser.add_argument("--eval", default=True, type=bool)
+    parser.add_argument("--type", default=True, type=bool)
     parser.add_argument("--cuda", action="store_true", default=torch.cuda.is_available())
     args = parser.parse_args()
     df = load_data(parent_dir)

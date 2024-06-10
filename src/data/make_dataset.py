@@ -12,7 +12,8 @@ from pyro.optim import ClippedAdam
 import itertools
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from ..features.build_features import calculate_columns
+from src.features.build_features import calculate_columns
+from imblean.under_sampling import RandomUnderSampler
 
 from pathlib import Path
 
@@ -50,7 +51,9 @@ def split_data(df, test_size=0.2, random_state=42):
     X = df.drop(columns=[target])
     y = df[target]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
-    return X_train, X_test, y_train, y_test
+    rus = RandomUnderSampler(random_state=random_state)
+    X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
+    return X_train_resampled, X_test, y_train_resampled, y_test
 
         
 def load_data(parent_dir):

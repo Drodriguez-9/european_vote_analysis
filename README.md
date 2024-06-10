@@ -54,6 +54,4 @@ Project Organization
 
 --------
 
-Link to data:
-https://www.chesdata.eu/s/1999-2019_CHES_dataset_meansv3-x7lr.csv
-https://dataverse.harvard.edu/file.xhtml?fileId=5194094&version=1.0#
+Run  

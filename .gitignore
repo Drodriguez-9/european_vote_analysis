@@ -4,6 +4,10 @@ __pycache__/
 .venv/
 # C extensions
 *.so
+*.err
+*.npz
+*.out
+
 
 *.csv
 *.r

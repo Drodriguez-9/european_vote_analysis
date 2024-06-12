@@ -1,8 +1,3 @@
-european vote analysis
-==============================
-
-European countries national political data (votes, EU-closeness,..) and European Elections data -> goal to predict the outcome of EU elections 2024
-
 Project Organization
 ------------
 
